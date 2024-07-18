@@ -137,7 +137,7 @@ local repo = 'https://raw.githubusercontent.com/Neuublue/Bluu/main/LinoriaLib/'
 local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
 
 local Window = Library:CreateWindow({
-    Title = 'Bluu | Swordburst 2',
+    Title = '🟢 Updated | Swordburst 2',
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -1148,7 +1148,7 @@ Level.Changed:Connect(function()
     end
 end)
 FarmingKicks:AddToggle('LevelKick', { Text = 'Level kick' })
-FarmingKicks:AddSlider('KickLevel', { Text = 'Kick level', Default = 130, Min = 0, Max = 250, Rounding = 0, Compact = true })
+FarmingKicks:AddSlider('KickLevel', { Text = 'Kick level', Default = 130, Min = 0, Max = 400, Rounding = 0, Compact = true })
 
 Profile:WaitForChild('Skills').ChildAdded:Connect(function(Skill)
     if Toggles.SkillKick.Value then
