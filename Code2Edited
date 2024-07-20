@@ -1134,7 +1134,6 @@ FarmingKicks:AddToggle('SkillKick', { Text = 'Skill kick' })
 local RarityColors = require(Services.UI.Theme).rarityColors
 
 FarmingKicks:AddInput('KickWebhook', { Text = 'Kick webhook', Finished = true, Placeholder = 'https://discord.com/api/webhooks/' }):OnChanged(function()
-    SendTestMessage(Options.KickWebhook.Value)
 end)
 
 local KickConnection
