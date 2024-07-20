@@ -8,28 +8,26 @@ if queue_on_teleport then
     queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/Neuublue/Bluu/main/Swordburst2.lua"))()')
 end
 
-local SendWebhook do
+local function SendWebhook(Url, Body, Ping)
     local http_request = (syn and syn.request) or (fluxus and fluxus.request) or request or http_request
-    SendWebhook = function(Url, Body, Ping)
-        if typeof(Url) == 'string' and (string.match(Url, '^https://discord')) and typeof(Body) == 'table' then
-            Body.content = Ping and '@everyone' or nil
-            Body.username = 'Bluu'
-            Body.avatar_url = 'https://raw.githubusercontent.com/Neuublue/Bluu/main/Bluu.png'
-            if not Body.embeds then
-                Body.embeds = { {} }
-            end
-            Body.embeds[1].footer = {
-                text = 'Bluu',
-                icon_url = 'https://raw.githubusercontent.com/Neuublue/Bluu/main/Bluu.png'
-            }
-            Body.embeds[1].timestamp = DateTime:now():ToIsoDate()
-            http_request({
-                Url = Url,
-                Body = game:GetService('HttpService'):JSONEncode(Body),
-                Method = 'POST',
-                Headers = { ['content-type'] = 'application/json' }
-            })
+    if typeof(Url) == 'string' and string.match(Url, '^https://discord') and typeof(Body) == 'table' then
+        Body.content = Ping and '@everyone' or nil
+        Body.username = 'Bluu'
+        Body.avatar_url = 'https://raw.githubusercontent.com/Neuublue/Bluu/main/Bluu.png'
+        if not Body.embeds then
+            Body.embeds = { {} }
         end
+        Body.embeds[1].footer = {
+            text = 'Bluu',
+            icon_url = 'https://raw.githubusercontent.com/Neuublue/Bluu/main/Bluu.png'
+        }
+        Body.embeds[1].timestamp = DateTime:now():ToIsoDate()
+        http_request({
+            Url = Url,
+            Body = game:GetService('HttpService'):JSONEncode(Body),
+            Method = 'POST',
+            Headers = { ['content-type'] = 'application/json' }
+        })
     end
 end
 
@@ -1134,6 +1132,8 @@ FarmingKicks:AddToggle('SkillKick', { Text = 'Skill kick' })
 local RarityColors = require(Services.UI.Theme).rarityColors
 
 FarmingKicks:AddInput('KickWebhook', { Text = 'Kick webhook', Finished = true, Placeholder = 'https://discord.com/api/webhooks/' }):OnChanged(function()
+    -- Placeholder action for KickWebhook change
+    print("Kick webhook changed to: " .. Options.KickWebhook.Value)
 end)
 
 local KickConnection
@@ -1313,6 +1313,8 @@ Drops:AddDropdown('AutoDismantle', {
 })
 
 Drops:AddInput('DropWebhook', { Text = 'Drop webhook', Placeholder = 'https://discord.com/api/webhooks/' }):OnChanged(function()
+    -- Placeholder action for DropWebhook change
+    print("Drop webhook changed to: " .. Options.DropWebhook.Value)
 end)
 
 Drops:AddToggle('PingInMessage', { Text = 'Ping in message' })
