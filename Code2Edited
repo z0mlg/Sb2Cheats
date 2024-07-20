@@ -1313,7 +1313,6 @@ Drops:AddDropdown('AutoDismantle', {
 })
 
 Drops:AddInput('DropWebhook', { Text = 'Drop webhook', Placeholder = 'https://discord.com/api/webhooks/' }):OnChanged(function()
-    SendTestMessage(Options.DropWebhook.Value)
 end)
 
 Drops:AddToggle('PingInMessage', { Text = 'Ping in message' })
