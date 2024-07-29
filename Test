@@ -767,7 +767,6 @@ end
         task.wait(Threads * Options.KillauraDelay.Value)
         OnCooldown[Target] = nil
     end)
-end
 
 
 Killaura:AddToggle('Killaura', { Text = 'Enabled' })
