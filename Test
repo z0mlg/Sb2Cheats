@@ -3149,20 +3149,19 @@ local equipBestAccessory = function()
 
     if not bestAccessory then return end
 
-    local accessory1 = Equip:FindFirstChild('Accessory1') and Equip.Accessory1.Value or 0
-    local accessory2 = Equip:FindFirstChild('Accessory2') and Equip.Accessory2.Value or 0
-    if accessory1 ~= bestAccessory.Value or accessory2 ~= bestAccessory.Value then
-        InvokeFunction('Equipment', { 'Wear', bestAccessory })
-        if accessory2 ~= 0 then
-            InvokeFunction('Equipment', { 'Unequip', accessory2 })
-        end
-        InvokeFunction('Equipment', { 'Wear', bestAccessory })
-    end
+    InvokeFunction('Equipment', { 'Wear', bestAccessory })
+    InvokeFunction('Equipment', { 'Wear', bestAccessory })
 end
 
 Misc2:AddToggle('EquipBestWeapon', { Text = 'Equip best weapon' }):OnChanged(equipBestWeapon)
 Misc2:AddToggle('EquipBestArmor', { Text = 'Equip best armor' }):OnChanged(equipBestArmor)
-Misc2:AddToggle('EquipBestAccessory', { Text = 'Equip best accessory' }):OnChanged(equipBestAccessory)
+Misc2:AddToggle('EquipBestAccessory', { Text = 'Equip best accessory' }):OnChanged(function(value)
+    if not value then return end
+    while Toggles.EquipBestAccessory.Value do
+        equipBestAccessory()
+        task.wait(0.1)
+    end
+end)
 Inventory.ChildAdded:Connect(equipBestWeapon)
 Level.Changed:Connect(equipBestWeapon)
 
@@ -3296,6 +3295,8 @@ local function autoBlockModerator(player)
         if success then
             task.spawn(function()
                 local CoreGui = game:GetService("CoreGui")
+                local GuiService = game:GetService("GuiService")
+                local VirtualInputManager = game:GetService("VirtualInputManager")
                 
                 local maxAttempts = 120
                 local blockButton
@@ -3306,12 +3307,9 @@ local function autoBlockModerator(player)
                     end)
                     
                     if findSuccess and blockButton then
-                        local Signals = {"Activated", "MouseButton1Down", "MouseButton2Down", "MouseButton1Click", "MouseButton2Click"}
-                        for _, Signal in pairs(Signals) do
-                            pcall(function()
-                                firesignal(blockButton[Signal])
-                            end)
-                        end
+                        GuiService.SelectedObject = blockButton
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
                         print("[Mod Blocker] Successfully blocked moderator:", player.Name)
                         
                         if Toggles.ServerSwitch and Toggles.ServerSwitch.Value then
@@ -3453,18 +3451,20 @@ local function blockPlayer(player)
     
     task.spawn(function()
         local CoreGui = game:GetService("CoreGui")
+        local GuiService = game:GetService("GuiService")
+        local VirtualInputManager = game:GetService("VirtualInputManager")
         
         for i = 1, 120 do
-            local success = pcall(function()
-                local btn = CoreGui.FoundationOverlay.BlockingModalScreen.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
-                local Signals = {"Activated", "MouseButton1Down", "MouseButton2Down", "MouseButton1Click", "MouseButton2Click"}
-                for _, Signal in pairs(Signals) do
-                    pcall(function()
-                        firesignal(btn[Signal])
-                    end)
-                end
+            local success, btn = pcall(function()
+                return CoreGui.FoundationOverlay.BlockingModalScreen.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
             end)
-            if success then return end
+            
+            if success and btn then
+                GuiService.SelectedObject = btn
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                return
+            end
             task.wait()
         end
     end)
