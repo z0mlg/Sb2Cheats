@@ -3296,21 +3296,22 @@ local function autoBlockModerator(player)
         if success then
             task.spawn(function()
                 local CoreGui = game:GetService("CoreGui")
-                local GuiService = game:GetService("GuiService")
-                local VirtualInputManager = game:GetService("VirtualInputManager")
                 
                 local maxAttempts = 120
                 local blockButton
                 
                 for i = 1, maxAttempts do
                     local findSuccess = pcall(function()
-                        blockButton = CoreGui.BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
+                        blockButton = CoreGui.FoundationOverlay.BlockingModalScreen.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
                     end)
                     
                     if findSuccess and blockButton then
-                        GuiService.SelectedObject = blockButton
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                        local Signals = {"Activated", "MouseButton1Down", "MouseButton2Down", "MouseButton1Click", "MouseButton2Click"}
+                        for _, Signal in pairs(Signals) do
+                            pcall(function()
+                                firesignal(blockButton[Signal])
+                            end)
+                        end
                         print("[Mod Blocker] Successfully blocked moderator:", player.Name)
                         
                         if Toggles.ServerSwitch and Toggles.ServerSwitch.Value then
@@ -3324,13 +3325,8 @@ local function autoBlockModerator(player)
                             saveServerSwitchConfig(originalFloor, currentPosition)
                             print('[Server Switch] Saved position:', currentPosition)
                             
-                            print('[Server Switch] Teleporting to Floor 1...')
-                            Function:InvokeServer("Teleport", {"Teleport", 542351431})
-                            
-                            task.wait(2)
-                            
-                            print('[Server Switch] Teleporting back to original floor (server hop)...')
-                            Function:InvokeServer("Teleport", {"Teleport", originalFloor})
+                            print('[Server Switch] Teleporting to Hub World...')
+                            game:GetService("TeleportService"):Teleport(659222129, LocalPlayer)
                         end
                         
                         return
@@ -3360,10 +3356,37 @@ end
 task.spawn(function()
     task.wait(3)
     
+    if game.PlaceId == 659222129 then
+        print('[Hub World] Detected hub world, firing Login remote in loop...')
+        task.spawn(function()
+            while game.PlaceId == 659222129 do
+                pcall(function()
+                    local args = {"Login"}
+                    game:GetService("ReplicatedStorage"):WaitForChild("Function"):InvokeServer(unpack(args))
+                end)
+                task.wait(1)
+            end
+        end)
+    end
+    
     local config = loadServerSwitchConfig()
     if config and config.active then
-        if game.PlaceId == 542351431 and config.targetPlace ~= 542351431 then
-            print('[Server Switch] In Floor 1, teleporting back to original floor:', config.targetPlace)
+        if game.PlaceId == 659222129 and config.targetPlace ~= 659222129 then
+            print('[Server Switch] In Hub World, auto-executing script...')
+            task.wait(2)
+            
+            local success, result = pcall(function()
+                return game:HttpGet('https://raw.githubusercontent.com/z0mlg/Sb2Cheats/refs/heads/main/Test')
+            end)
+            
+            if success and result then
+                print('[Server Switch] Script loaded, executing...')
+                loadstring(result)()
+            else
+                warn('[Server Switch] Failed to load auto-execute script')
+            end
+            
+            print('[Server Switch] Teleporting back to original floor:', config.targetPlace)
             task.wait(1)
             Function:InvokeServer("Teleport", {"Teleport", config.targetPlace})
         elseif config.targetPlace == game.PlaceId and config.position then
@@ -3430,15 +3453,16 @@ local function blockPlayer(player)
     
     task.spawn(function()
         local CoreGui = game:GetService("CoreGui")
-        local GuiService = game:GetService("GuiService")
-        local VirtualInputManager = game:GetService("VirtualInputManager")
         
         for i = 1, 120 do
             local success = pcall(function()
-                local btn = CoreGui.BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
-                GuiService.SelectedObject = btn
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                local btn = CoreGui.FoundationOverlay.BlockingModalScreen.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
+                local Signals = {"Activated", "MouseButton1Down", "MouseButton2Down", "MouseButton1Click", "MouseButton2Click"}
+                for _, Signal in pairs(Signals) do
+                    pcall(function()
+                        firesignal(btn[Signal])
+                    end)
+                end
             end)
             if success then return end
             task.wait()
@@ -3498,17 +3522,12 @@ local function startEmptyServerFinder(resuming, serversChecked)
             end
             
             serversChecked = serversChecked + 1
-            print('[Empty Server] Servers checked:', serversChecked, '| Server hopping via Floor 1...')
+            print('[Empty Server] Servers checked:', serversChecked, '| Server hopping via Hub World...')
             
             saveEmptyServerConfig(emptyServerTargetPlace, emptyServerMaxPlayers, serversChecked)
             
-            print('[Empty Server] Teleporting to Floor 1...')
-            Function:InvokeServer("Teleport", {"Teleport", 542351431})
-            
-            task.wait(2)
-            
-            print('[Empty Server] Teleporting back to original floor (server hop)...')
-            Function:InvokeServer("Teleport", {"Teleport", emptyServerTargetPlace})
+            print('[Empty Server] Teleporting to Hub World...')
+            game:GetService("TeleportService"):Teleport(659222129, LocalPlayer)
             
             task.wait(10)
         end
@@ -3530,8 +3549,22 @@ task.spawn(function()
     
     local config = loadEmptyServerConfig()
     if config and config.active then
-        if game.PlaceId == 542351431 and config.targetPlace ~= 542351431 then
-            print('[Empty Server] In Floor 1, teleporting back to original floor:', config.targetPlace)
+        if game.PlaceId == 659222129 and config.targetPlace ~= 659222129 then
+            print('[Empty Server] In Hub World, auto-executing script...')
+            task.wait(2)
+            
+            local success, result = pcall(function()
+                return game:HttpGet('https://raw.githubusercontent.com/z0mlg/Sb2Cheats/refs/heads/main/Test')
+            end)
+            
+            if success and result then
+                print('[Empty Server] Script loaded, executing...')
+                loadstring(result)()
+            else
+                warn('[Empty Server] Failed to load auto-execute script')
+            end
+            
+            print('[Empty Server] Teleporting back to original floor:', config.targetPlace)
             task.wait(1)
             Function:InvokeServer("Teleport", {"Teleport", config.targetPlace})
         elseif config.targetPlace == game.PlaceId then
