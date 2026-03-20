@@ -280,6 +280,22 @@ local Window = Library:CreateWindow({
 
 local Main = Window:AddTab('Main', 'user')
 
+-- Helper function to check if entity is dead
+local isDead = function(entity)
+    return not (
+        entity
+        and entity.Parent
+        and entity:FindFirstChild('HumanoidRootPart')
+        and entity:FindFirstChild('Entity')
+        and entity.Entity:FindFirstChild('Health')
+        and entity.Entity.Health.Value > 0
+        and (
+            not entity.Entity:FindFirstChild('HitLives')
+            or entity.Entity.HitLives.Value > 0
+        )
+    )
+end
+
 -- Waypoint System Tab
 local WaypointsTab = Window:AddTab('Waypoints', 'map-pin')
 
@@ -1150,21 +1166,6 @@ LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     Stamina = Entity:WaitForChild('Stamina')
     onHumanoidAdded()
 end)
-
-local isDead = function(entity)
-    return not (
-        entity
-        and entity.Parent
-        and entity:FindFirstChild('HumanoidRootPart')
-        and entity:FindFirstChild('Entity')
-        and entity.Entity:FindFirstChild('Health')
-        and entity.Entity.Health.Value > 0
-        and (
-            not entity.Entity:FindFirstChild('HitLives')
-            or entity.Entity.HitLives.Value > 0
-        )
-    )
-end
 
 local toggleLerp = (function()
     local lerpToggles = {}
