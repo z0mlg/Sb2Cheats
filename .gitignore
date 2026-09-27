@@ -1,0 +1,11 @@
+# Editor / OS noise
+.vscode/
+.idea/
+*.log
+Thumbs.db
+Desktop.ini
+nul
+
+# Local dev secrets - never commit webhook URLs or personal config
+secrets.lua
+config.local.lua
