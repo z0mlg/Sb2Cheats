@@ -54,10 +54,8 @@ local function omlBlockAllAndHop()
 
     for _, plr in ipairs(others) do
         if plr and plr.Parent then
-            if not blockPlayer(plr) then
-                warn(`[OML] Failed to block {plr.Name}`)
-            end
-            task.wait(1)
+            blockPlayer(plr) -- verified inside: returns once actually blocked
+            task.wait(10)
         end
     end
 

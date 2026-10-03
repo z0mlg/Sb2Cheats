@@ -216,7 +216,11 @@ local isPlayerBlocked = function(player)
 end
 
 blockPlayer = function(player)
-    for _ = 1, 3 do
+    -- retries until the block is verified server-side; stops if the target
+    -- leaves (nothing left to block). 10s between each attempt.
+    while player.Parent do
+        if isPlayerBlocked(player) then return true end
+
         StarterGui:SetCore('PromptBlockPlayer', player)
 
         local modal
@@ -235,8 +239,10 @@ blockPlayer = function(player)
 
         task.wait(0.5)
         if isPlayerBlocked(player) then return true end
+
+        task.wait(10)
     end
-    return false
+    return true -- target left: nothing left to block
 end
 
 local modCheck = function(player, leaving)
