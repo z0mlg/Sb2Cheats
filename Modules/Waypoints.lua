@@ -216,6 +216,34 @@ local getSavedConfigs = function()
     return configs
 end
 
+-- Decides when it's safe to advance to the next waypoint.
+-- Normal mode: original behavior -- check only after a 7s warmup, advance when
+-- no living mobs remain near the anchor. Tag mode: scan every cycle and advance
+-- the instant every nearby mob is tagged (empty spots still wait the 7s so we
+-- don't teleport-spam past mobs that haven't spawned/registered yet).
+local pathFarmClear = function(anchorPos, elapsed)
+    local tagMode = Toggles.TagMode and Toggles.TagMode.Value
+    if not tagMode and elapsed < 7 then return false end
+
+    local farmRadius = Options.AutofarmRadius.Value
+    farmRadius = (farmRadius == Options.AutofarmRadius.Max) and math.huge or farmRadius
+
+    local sawNearby = false
+    for _, mob in next, Mobs:GetChildren() do
+        if Options.IgnoreMobs.Value[mob.Name] then continue end
+        if isDead(mob) then continue end
+        local rootPart = mob:FindFirstChild('HumanoidRootPart')
+        if not rootPart then continue end
+        if (rootPart.Position - anchorPos).Magnitude > farmRadius then continue end
+        sawNearby = true
+        if tagMode and isTagged(mob) then continue end
+        return false -- an unfinished mob is nearby
+    end
+
+    if tagMode and sawNearby then return true end -- everything nearby is tagged
+    return elapsed >= 7 -- empty spot (either mode): keep the 7s spawn safety
+end
+
 local PathFarming = WaypointsTab:AddLeftGroupbox('Path farming')
 
 PathFarming:AddToggle('EnablePathFarming', {
@@ -276,30 +304,7 @@ PathFarming:AddToggle('EnablePathFarming', {
                 task.wait(0.5)
 
                 if Humanoid.Health == 0 then break end
-
-                if (tick() - startTime) >= 7 then
-                    local farmRadius = Options.AutofarmRadius.Value
-                    farmRadius = (farmRadius == Options.AutofarmRadius.Max) and math.huge or farmRadius
-                    local foundMobsNearby = false
-                    for _, mob in next, Mobs:GetChildren() do
-                        if Options.IgnoreMobs.Value[mob.Name] then continue end
-                        if isDead(mob) then continue end
-                        if tagGate(mob) then continue end
-
-                        local rootPart = mob:FindFirstChild('HumanoidRootPart')
-                        if rootPart then
-                            local distance = (rootPart.Position - waypointPos).Magnitude
-                            if distance <= farmRadius then
-                                foundMobsNearby = true
-                                break
-                            end
-                        end
-                    end
-                    
-                    if not foundMobsNearby then
-                        break
-                    end
-                end
+                if pathFarmClear(waypointPos, tick() - startTime) then break end
             end
             
             for i, wp in ipairs(WaypointSystem.waypoints) do
@@ -318,30 +323,7 @@ PathFarming:AddToggle('EnablePathFarming', {
                         task.wait(0.5)
 
                         if Humanoid.Health == 0 then break end
-
-                        if (tick() - priorityStartTime) >= 7 then
-                            local farmRadius = Options.AutofarmRadius.Value
-                            farmRadius = (farmRadius == Options.AutofarmRadius.Max) and math.huge or farmRadius
-                            local stillHasMobs = false
-                            for _, mob in next, Mobs:GetChildren() do
-                                if Options.IgnoreMobs.Value[mob.Name] then continue end
-                                if isDead(mob) then continue end
-                                if tagGate(mob) then continue end
-
-                                local rootPart = mob:FindFirstChild('HumanoidRootPart')
-                                if rootPart then
-                                    local distance = (rootPart.Position - wp.position).Magnitude
-                                    if distance <= farmRadius then
-                                        stillHasMobs = true
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            if not stillHasMobs then
-                                break
-                            end
-                        end
+                        if pathFarmClear(wp.position, tick() - priorityStartTime) then break end
                     end
                 end
             end
