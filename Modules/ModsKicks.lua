@@ -144,7 +144,12 @@ ModDetector:AddToggle('ServerSwitch', { Text = 'Server switch', Default = false 
 
 ModDetector:AddToggle('PlayerPanic', {
     Text = 'Panic on players',
-    Tooltip = 'Any non-exempt player in the server: disable every suspicious toggle, respawn to spawn, keep autoswing on; block + server hop if they stay'
+    Tooltip = 'Any non-exempt player in the server: disable every suspicious toggle, respawn to spawn, keep autoswing on'
+})
+ModDetector:AddToggle('PanicBlockHop', {
+    Text = 'Panic: block + server hop',
+    Default = true,
+    Tooltip = 'If they are still here after the delay: block them and hop to a fresh server. Off = just stay at spawn looking AFK'
 })
 ModDetector:AddSlider('PanicPlayerDelay', { Text = 'Block + hop after', Default = 30, Min = 5, Max = 120, Rounding = 0, Suffix = 's', Compact = true })
 ModDetector:AddDropdown('PanicWhitelist', { Text = 'Panic whitelist', Values = {}, SpecialType = 'Player', Multi = true, AllowNull = true })
@@ -348,6 +353,7 @@ local panicWatch = function(player)
     task.delay(Options.PanicPlayerDelay.Value, function()
         panicWatching[player] = nil
         if not (Toggles.PlayerPanic and Toggles.PlayerPanic.Value) then return end
+        if not (Toggles.PanicBlockHop and Toggles.PanicBlockHop.Value) then return end -- stay put, look AFK
         if not player.Parent then return end -- left on their own
 
         for _, p in next, Players:GetPlayers() do
@@ -388,6 +394,17 @@ Toggles.PlayerPanic:OnChanged(function(value)
     if not value then return end
     for _, player in next, Players:GetPlayers() do
         panicCheck(player)
+    end
+end)
+
+-- enabling block+hop while already panicked re-arms the watch for anyone
+-- still inside (fresh delay) instead of silently doing nothing
+Toggles.PanicBlockHop:OnChanged(function(value)
+    if not (value and panicSwept) then return end
+    for _, player in next, Players:GetPlayers() do
+        if not isPanicExempt(player) then
+            panicWatch(player)
+        end
     end
 end)
 
