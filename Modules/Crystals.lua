@@ -173,4 +173,107 @@ Event.OnClientEvent:Connect(function(...)
     end
 end)
 
+-- ===================== TRADE ITEMS =====================
+-- Inventory children are one IntValue per item copy (60 'Bloodrender' = 60
+-- separate IntValues). The server only accepts each instance once, so every
+-- copy needs its own TradeAddItem fire.
+local TradeItems = Crystals:AddLeftGroupbox('Trade items')
+
+local tradeItemRows = {} -- name -> { label, slider, button }
+local tradeItemSeq = 0
+local tradeRefreshQueued = false
+
+local tradeItemCounts = function()
+    local counts, order = {}, {}
+    for _, item in ipairs(Inventory:GetChildren()) do
+        if not counts[item.Name] then
+            counts[item.Name] = 0
+            table.insert(order, item.Name)
+        end
+        counts[item.Name] += 1
+    end
+    table.sort(order)
+    return order, counts
+end
+
+local addToTrade = function(name, amount)
+    if not inTrade.Value then
+        return Library:Notify('Not in a trade')
+    end
+    local sent = 0
+    for _, item in ipairs(Inventory:GetChildren()) do
+        if item.Name ~= name then continue end
+        Event:FireServer('Trade', 'TradeAddItem', { item })
+        sent += 1
+        if sent >= amount then break end
+    end
+    if sent > 0 then
+        Library:Notify(`Added {sent}x {name} to the trade`, 2)
+    end
+end
+
+local refreshTradeItems
+refreshTradeItems = function()
+    local order, counts = tradeItemCounts()
+    local active = {}
+    for _, name in ipairs(order) do active[name] = true end
+
+    -- hide rows for names no longer in the inventory, resync the live ones
+    for name, row in pairs(tradeItemRows) do
+        local alive = active[name] == true
+        row.label:SetVisible(alive)
+        row.slider:SetVisible(alive)
+        row.button:SetVisible(alive)
+        if alive then
+            local count = counts[name]
+            row.label:SetText(`{name} x{count}`)
+            row.slider:SetMax(math.max(count, 1))
+            row.slider:SetValue(math.min(row.slider.Value, count)) -- keep the pick
+            row.slider:SetSuffix(`/ {count}`)
+        end
+    end
+
+    for _, name in ipairs(order) do
+        if tradeItemRows[name] then continue end
+        tradeItemSeq += 1
+        local count = counts[name]
+
+        local label = TradeItems:AddLabel(`{name} x{count}`)
+        local slider = TradeItems:AddSlider(`TradeQty_{tradeItemSeq}`, {
+            Text = 'Amount',
+            Min = 0,
+            Max = math.max(count, 1),
+            Default = count,
+            Rounding = 0,
+            Suffix = `/ {count}`,
+            Compact = true,
+        })
+        local button = TradeItems:AddButton({
+            Text = 'Add to trade',
+            Func = function()
+                addToTrade(name, math.round(slider.Value))
+            end,
+        })
+        tradeItemRows[name] = { label = label, slider = slider, button = button }
+    end
+
+    if TradeItems.Resize then TradeItems:Resize() end
+end
+
+local queueTradeItemsRefresh = function()
+    if tradeRefreshQueued then return end
+    tradeRefreshQueued = true
+    task.delay(0.3, function()
+        tradeRefreshQueued = false
+        refreshTradeItems()
+    end)
+end
+
+Inventory.ChildAdded:Connect(queueTradeItemsRefresh)
+Inventory.ChildRemoved:Connect(queueTradeItemsRefresh)
+
+TradeItems:AddButton({ Text = 'Refresh items', Func = refreshTradeItems })
+
+task.spawn(refreshTradeItems)
+
 end
