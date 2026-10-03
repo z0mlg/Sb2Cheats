@@ -354,6 +354,7 @@ Killaura:AddToggle('Killaura', { Text = 'Enabled' }):OnChanged(function()
             if onCooldown[target] then continue end
             if isDead(target) then continue end
             if not assistRequirement(target) then continue end
+            if tagGate(target) then continue end
             local rootPart = target.HumanoidRootPart
             local targetPos = rootPart.Position + Vector3.new(
                 0,

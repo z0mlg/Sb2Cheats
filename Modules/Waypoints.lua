@@ -284,6 +284,7 @@ PathFarming:AddToggle('EnablePathFarming', {
                     for _, mob in next, Mobs:GetChildren() do
                         if Options.IgnoreMobs.Value[mob.Name] then continue end
                         if isDead(mob) then continue end
+                        if tagGate(mob) then continue end
 
                         local rootPart = mob:FindFirstChild('HumanoidRootPart')
                         if rootPart then
@@ -325,6 +326,7 @@ PathFarming:AddToggle('EnablePathFarming', {
                             for _, mob in next, Mobs:GetChildren() do
                                 if Options.IgnoreMobs.Value[mob.Name] then continue end
                                 if isDead(mob) then continue end
+                                if tagGate(mob) then continue end
 
                                 local rootPart = mob:FindFirstChild('HumanoidRootPart')
                                 if rootPart then

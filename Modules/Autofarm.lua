@@ -43,6 +43,20 @@ assistRequirement = function(mob)
     return dealt > 0 and dealt >= maxHp * (Options.AssistDamage.Value / 100)
 end
 
+-- tag mode: once LocalPlayer's own share is met the mob is "tagged" for kill
+-- credit - the farm then leaves it alone and moves to the next one
+isTagged = function(mob)
+    local dealt, maxHp = dealtShare(mob, LocalPlayer.Name)
+    if not dealt then return false end
+    local pct = Options.AssistDamage.Value / 100
+    if pct <= 0 then return dealt > 0 end -- any hit counts when the share is 0
+    return dealt >= maxHp * pct
+end
+
+tagGate = function(mob) -- skip already-tagged mobs only while tag mode is on
+    return Toggles.TagMode ~= nil and Toggles.TagMode.Value and isTagged(mob)
+end
+
 local getAutofarmTarget = function()
     local radius = Options.AutofarmRadius.Value
     radius = (radius == Options.AutofarmRadius.Max) and math.huge or radius
@@ -60,6 +74,7 @@ local getAutofarmTarget = function()
         local mobName = mob.Name
         if ignoreList[mobName] or isDead(mob) then continue end
         if not assistRequirement(mob) then continue end
+        if tagGate(mob) then continue end
 
         local mobPos = mob:FindFirstChild('HumanoidRootPart') and mob.HumanoidRootPart.Position
         if not mobPos then continue end
@@ -584,7 +599,7 @@ Autofarm:AddToggle('Autofarm', { Text = 'Enabled' }):OnChanged(function()
             continue
         end
 
-        if isDead(target) or Options.IgnoreMobs.Value[target.Name] then
+        if isDead(target) or Options.IgnoreMobs.Value[target.Name] or tagGate(target) then
             shouldUpdateTarget = true
             continue
         end
@@ -1159,6 +1174,11 @@ Autofarm:AddSlider('AssistDamage', {
     Rounding = 0,
     Suffix = '%',
     Compact = true
+})
+
+Autofarm:AddToggle('TagMode', {
+    Text = 'Tag mode',
+    Tooltip = 'Hit each mob just enough to secure kill credit (Assist damage %), then move to the next one'
 })
 
 -- Persist the assist pick: rejoin a server with them in it -> auto-select again

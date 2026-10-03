@@ -28,6 +28,7 @@ local UpdateAutowalkTarget = function()
         if Options.IgnoreMobs.Value[mob.Name] then continue end
         if isDead(mob) then continue end
         if not assistRequirement(mob) then continue end
+        if tagGate(mob) then continue end
         if Toggles.UseWaypoint.Value and (mob.HumanoidRootPart.Position - waypoint.Position).Magnitude > radius then continue end
 
         local newDistance = (mob.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
