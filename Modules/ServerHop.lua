@@ -2,7 +2,7 @@
 
 do
 
-local function saveServerSwitchConfig(targetPlace, position)
+function saveServerSwitchConfig(targetPlace, position)
     if not isfolder then return end
     if not isfolder('Bluu') then makefolder('Bluu') end
     if not isfolder('Bluu/Swordburst 2') then makefolder('Bluu/Swordburst 2') end
@@ -246,7 +246,7 @@ local function startEmptyServerFinder(resuming, serversChecked)
                     print('[Empty Server] Blocking player:', playerToBlock.Name)
                     blockedThisSession[playerToBlock.UserId] = true
                     blockPlayer(playerToBlock) -- verified inside: returns once actually blocked
-                    task.wait(10)
+                    task.wait(5)
                 end
             end
             

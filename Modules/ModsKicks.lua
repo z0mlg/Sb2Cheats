@@ -142,6 +142,13 @@ ModDetector:AddSlider('PanicDelay', { Text = 'Panic delay', Default = 15, Min = 
 ModDetector:AddToggle('AutoBlockMods', { Text = 'Auto-block moderators', Default = false })
 ModDetector:AddToggle('ServerSwitch', { Text = 'Server switch', Default = false })
 
+ModDetector:AddToggle('PlayerPanic', {
+    Text = 'Panic on players',
+    Tooltip = 'Any non-exempt player in the server: disable every suspicious toggle, respawn to spawn, keep autoswing on; block + server hop if they stay'
+})
+ModDetector:AddSlider('PanicPlayerDelay', { Text = 'Block + hop after', Default = 30, Min = 5, Max = 120, Rounding = 0, Suffix = 's', Compact = true })
+ModDetector:AddDropdown('PanicWhitelist', { Text = 'Panic whitelist', Values = {}, SpecialType = 'Player', Multi = true, AllowNull = true })
+
 local CoreGui = game:GetService('CoreGui')
 local GuiService = game:GetService('GuiService')
 local VirtualInputManager = game:GetService('VirtualInputManager')
@@ -240,7 +247,7 @@ blockPlayer = function(player)
         task.wait(0.5)
         if isPlayerBlocked(player) then return true end
 
-        task.wait(10)
+        task.wait(5)
     end
     return true -- target left: nothing left to block
 end
@@ -277,6 +284,111 @@ Players.PlayerAdded:Connect(modCheck)
 
 Players.PlayerRemoving:Connect(function(player)
     modCheck(player, true)
+end)
+
+-- ===================== PLAYER PANIC =====================
+-- Any non-exempt player (not us, not whitelisted, not a friend) in the server:
+-- sweep every suspicious toggle off, respawn so we land back at spawn, keep
+-- autoswing running so we just look AFK. If the offender is still here after
+-- PanicPlayerDelay seconds: block them and hop to a fresh server.
+
+local PANIC_KEEP = { -- toggles allowed to survive the sweep
+    PlayerPanic = true,
+    Autoexecute = true,
+    MenuKeybind = true,
+}
+
+local isPanicExempt = function(player)
+    if player == LocalPlayer then return true end
+    if Options.PanicWhitelist and Options.PanicWhitelist.Value[player] then return true end
+    local ok, friends = pcall(function() return LocalPlayer:IsFriendsWith(player.UserId) end)
+    return ok and friends or false
+end
+
+local panicSwept = false
+local panicResumePos
+local panicWatching = {}
+
+local panicSweep = function(offender)
+    panicSwept = true
+    panicResumePos = HumanoidRootPart and HumanoidRootPart.Position
+    Library:Notify(`{offender.Name} is here - panicking!`, 8)
+
+    -- must be off BEFORE we die or onHumanoidAdded teleports us back to the
+    -- death spot instead of the spawn
+    if Toggles.ReturnOnDeath and Toggles.ReturnOnDeath.Value then
+        Toggles.ReturnOnDeath:SetValue(false)
+    end
+
+    for key, toggle in next, Toggles do
+        if not PANIC_KEEP[key] and toggle.Value then
+            pcall(function() toggle:SetValue(false) end)
+        end
+    end
+
+    toggleLerp()
+    enableLinearVelocity(false)
+
+    if Humanoid and Humanoid.Health > 0 then
+        Humanoid.Health = 0
+    end
+
+    -- re-arm autoswing once the new humanoid exists: just looks AFK at spawn
+    task.delay(2, function()
+        if Toggles.Autoswing then
+            pcall(function() Toggles.Autoswing:SetValue(true) end)
+        end
+    end)
+end
+
+local panicWatch = function(player)
+    if panicWatching[player] then return end
+    panicWatching[player] = true
+
+    task.delay(Options.PanicPlayerDelay.Value, function()
+        panicWatching[player] = nil
+        if not (Toggles.PlayerPanic and Toggles.PlayerPanic.Value) then return end
+        if not player.Parent then return end -- left on their own
+
+        for _, p in next, Players:GetPlayers() do
+            if not isPanicExempt(p) then
+                blockPlayer(p)
+                task.wait(5)
+            end
+        end
+
+        -- resume this floor + position after the hub bounce makes a new server
+        if saveServerSwitchConfig and HumanoidRootPart then
+            saveServerSwitchConfig(game.PlaceId, panicResumePos or HumanoidRootPart.Position)
+        end
+        pcall(function()
+            game:GetService('TeleportService'):Teleport(659222129, LocalPlayer)
+        end)
+    end)
+end
+
+local panicCheck = function(player)
+    if not (Toggles.PlayerPanic and Toggles.PlayerPanic.Value) then return end
+    if isPanicExempt(player) then return end
+    if not panicSwept then panicSweep(player) end
+    panicWatch(player)
+end
+
+Players.PlayerAdded:Connect(panicCheck)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    for _, p in next, Players:GetPlayers() do
+        if not isPanicExempt(p) then return end
+    end
+    panicSwept = false -- server clean again, re-arm the sweep
+end)
+
+Toggles.PlayerPanic:OnChanged(function(value)
+    if not value then return end
+    for _, player in next, Players:GetPlayers() do
+        panicCheck(player)
+    end
 end)
 
 local isInsideTeleportSpot = function()

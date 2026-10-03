@@ -55,7 +55,7 @@ local function omlBlockAllAndHop()
     for _, plr in ipairs(others) do
         if plr and plr.Parent then
             blockPlayer(plr) -- verified inside: returns once actually blocked
-            task.wait(10)
+            task.wait(5)
         end
     end
 
