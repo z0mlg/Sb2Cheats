@@ -552,7 +552,8 @@ end)
 local MODULES = {
     'Waypoints', 'Autofarm', 'Autowalk', 'Killaura', 'Cheats', 'Misc',
     'ModsKicks', 'ServerHop', 'Items', 'DropsSwing', 'Crystals', 'ESP',
-    'Settings', 'OMLFarm',
+    'Settings',
+    -- 'OMLFarm', -- floor-9 farm -> hub -> farm loop (disabled)
 }
 
 local function loadModule(name)
