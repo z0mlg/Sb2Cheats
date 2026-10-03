@@ -140,6 +140,7 @@ Event.OnClientEvent:Connect(function(...)
         end
     elseif args[2][2] == 'TradeChanged' then
         lastTradeChange = args[2][3]
+        inTrade.Value = true -- TradeChanged only fires mid-trade
         if not (Toggles.AcceptTrades.Value or Toggles.SendTrades.Value) then return end
         local targetRole = lastTradeChange.Requester == LocalPlayer and 'Partner' or 'Requester'
         local ourRole = targetRole == 'Partner' and 'Requester' or 'Partner'
@@ -197,9 +198,8 @@ local tradeItemCounts = function()
 end
 
 local addToTrade = function(name, amount)
-    if not inTrade.Value then
-        return Library:Notify('Not in a trade')
-    end
+    -- no inTrade gate: the server validates the session, and the flag can lag
+    -- on manually opened trades -- firing is a no-op when not in a trade
     local sent = 0
     for _, item in ipairs(Inventory:GetChildren()) do
         if item.Name ~= name then continue end
