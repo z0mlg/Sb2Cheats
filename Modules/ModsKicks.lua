@@ -297,10 +297,14 @@ end)
 -- autoswing running so we just look AFK. If the offender is still here after
 -- PanicPlayerDelay seconds: block them and hop to a fresh server.
 
-local PANIC_KEEP = { -- toggles allowed to survive the sweep
-    PlayerPanic = true,
-    Autoexecute = true,
-    MenuKeybind = true,
+-- Only the suspicious stuff gets swept: things that attack around us or
+-- move/teleport our character. Visual/client-side features stay on.
+local PANIC_SWEEP = {
+    Autofarm = true, EnablePathFarming = true, Autowalk = true, Pathfind = true,
+    Killaura = true, KillauraSwing = true, UseSkillPreemptively = true, AttackPlayers = true,
+    DodgeAttacks = true, Fly = true, Noclip = true, ClickTeleport = true,
+    ReturnOnDeath = true, ResetOnLowStamina = true, AutoJoinNewFloor = true,
+    GoToPlayer = true, SendTrades = true,
 }
 
 local isPanicExempt = function(player)
@@ -313,20 +317,20 @@ end
 local panicSwept = false
 local panicResumePos
 local panicWatching = {}
+local panicRestore = nil -- name -> value the toggle had before the sweep
 
 local panicSweep = function(offender)
     panicSwept = true
+    panicRestore = panicRestore or {} -- merge: a re-sweep must not lose state
     panicResumePos = HumanoidRootPart and HumanoidRootPart.Position
     Library:Notify(`{offender.Name} is here - panicking!`, 8)
 
-    -- must be off BEFORE we die or onHumanoidAdded teleports us back to the
-    -- death spot instead of the spawn
-    if Toggles.ReturnOnDeath and Toggles.ReturnOnDeath.Value then
-        Toggles.ReturnOnDeath:SetValue(false)
-    end
-
-    for key, toggle in next, Toggles do
-        if not PANIC_KEEP[key] and toggle.Value then
+    -- the loop turns ReturnOnDeath off before we die below, so onHumanoidAdded
+    -- won't teleport us back to the death spot instead of the spawn
+    for name in next, PANIC_SWEEP do
+        local toggle = Toggles[name]
+        if toggle and toggle.Value then
+            panicRestore[name] = true
             pcall(function() toggle:SetValue(false) end)
         end
     end
@@ -339,11 +343,14 @@ local panicSweep = function(offender)
     end
 
     -- re-arm autoswing once the new humanoid exists: just looks AFK at spawn
-    task.delay(2, function()
-        if Toggles.Autoswing then
-            pcall(function() Toggles.Autoswing:SetValue(true) end)
-        end
-    end)
+    if Toggles.Autoswing and not Toggles.Autoswing.Value then
+        panicRestore.Autoswing = false -- was off: restoring turns it back off
+        task.delay(2, function()
+            if panicSwept and Toggles.Autoswing then
+                pcall(function() Toggles.Autoswing:SetValue(true) end)
+            end
+        end)
+    end
 end
 
 local panicWatch = function(player)
@@ -391,10 +398,26 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 Toggles.PlayerPanic:OnChanged(function(value)
-    if not value then return end
-    for _, player in next, Players:GetPlayers() do
-        panicCheck(player)
+    if value then
+        for _, player in next, Players:GetPlayers() do
+            panicCheck(player)
+        end
+        return
     end
+
+    -- panic off: restore everything the sweep changed (except Autofarm --
+    -- rearming it would teleport us straight back into the field)
+    if panicRestore then
+        for name, prev in next, panicRestore do
+            if name ~= 'Autofarm' then
+                local toggle = Toggles[name]
+                if toggle then pcall(function() toggle:SetValue(prev) end) end
+            end
+        end
+        panicRestore = nil
+    end
+    panicSwept = false
+    panicWatching = {}
 end)
 
 -- enabling block+hop while already panicked re-arms the watch for anyone
