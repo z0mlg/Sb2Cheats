@@ -127,7 +127,13 @@ do
     espGui.IgnoreGuiInset = true
     espGui.Parent = espFolder.Parent
 
-    local hasDrawing = typeof(Drawing) == 'table' and typeof(Drawing.new) == 'function'
+    -- Probe instead of type-checking: some executors (Potassium) expose
+    -- Drawing as a userdata library, not a table.
+    local hasDrawing = pcall(function()
+        local probe = Drawing.new('Square')
+        probe:Remove()
+        return true
+    end)
     if not hasDrawing then
         Library:Notify('ESP needs the Drawing API - unsupported executor', 5)
     end
